@@ -56,6 +56,7 @@ def create_app(test_config=None):
     questions = Question.query.order_by(Question.id).all()
     formatted_questions = paginate_questions(request, questions)
     categories = Category.query.order_by(Category.id).all()
+    current_category = Category.query.order_by(Category.id).get(questions[0].category)
 
     formatted_categories = {}
 
@@ -70,7 +71,7 @@ def create_app(test_config=None):
       'questions': formatted_questions,
       'total_questions': len(questions),
       'categories': formatted_categories,
-      'current_category': formatted_categories[1],
+      'current_category': current_category.type,
     })
 
 
@@ -123,6 +124,25 @@ def create_app(test_config=None):
   Try using the word "title" to start. 
   '''
 
+  @app.route('/questions/search', methods=['POST'])
+  def search():
+    body = request.get_json()
+    search_query = body.get('searchTerm', None)
+
+    try:
+      questions = Question.query.order_by(Question.id).filter(Question.question.ilike('%{}%'.format(search_query))).all()
+      questions_formatted = paginate_questions(request, questions)
+      current_category = Category.query.order_by(Category.id).get(questions[0].category)
+
+      return jsonify({
+        'success': True,
+        'questions': questions_formatted,
+        'total_questions': len(questions),
+        'current_category': current_category.type,
+      })
+
+    except:
+      abort(422)
   '''
   @TODO: 
   Create a GET endpoint to get questions based on category. 
