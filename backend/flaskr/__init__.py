@@ -4,6 +4,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 import random, sys
 from models import setup_db, Question, Category
+from pprint import pprint
 
 QUESTIONS_PER_PAGE = 10
 
@@ -37,8 +38,6 @@ def create_app(test_config=None):
     return jsonify({
       'success': True,
       'categories': formatted_categories,
-      # 'categories': [category.format() for category in categories],
-      # 'total_categories': len(categories),
     })
 
 
@@ -51,7 +50,7 @@ def create_app(test_config=None):
 
     return formatted_questions[start:end]
 
-  @app.route('/questions')
+  @app.route('/questions', methods=['GET'])
   def get_questions():
     questions = Question.query.order_by(Question.id).all()
     formatted_questions = paginate_questions(request, questions)
@@ -135,7 +134,7 @@ def create_app(test_config=None):
       abort(422)
 
 
-  @app.route('/categories/<int:category_id>/questions')
+  @app.route('/categories/<int:category_id>/questions', methods=['GET'])
   def get_questions_by_category(category_id):
 
     try:
@@ -156,24 +155,47 @@ def create_app(test_config=None):
       abort(422)
 
 
-  '''
-  @TODO: 
-  Create a POST endpoint to get questions to play the quiz. 
-  This endpoint should take category and previous question parameters 
-  and return a random questions within the given category, 
-  if provided, and that is not one of the previous questions. 
+  @app.route('/quizzes', methods=['POST'])
+  def play():
+    body = request.get_json()
+    previous_questions = body.get('previous_questions', None)
+    quiz_category = body.get('quiz_category', None)
+    category_id = int(quiz_category['id'])
 
-  TEST: In the "Play" tab, after a user selects "All" or a category,
-  one question at a time is displayed, the user is allowed to answer
-  and shown whether they were correct or not. 
-  '''
+    if category_id is None:
+      abort(404)
+
+    try:
+      questions = Question.query.order_by(Question.id)
+
+      if category_id != 0:
+        questions = questions.filter(Question.category == category_id).all()
+      else:
+        questions = questions.all()
+
+      random_question = random.choice(questions)
+
+      if len(previous_questions) == len(questions):
+        return jsonify({
+          'success': True,
+          'question': None,
+        })
+
+      while random_question.id in previous_questions:
+        random_question = random.choice(questions)
+
+      return jsonify({
+        'success': True,
+        'question': random_question.format(),
+      })
+
+    except:
+      abort(422)
 
   '''
   @TODO: 
   Create error handlers for all expected errors 
   including 404 and 422. 
   '''
-  
-  return app
 
-    
+  return app
