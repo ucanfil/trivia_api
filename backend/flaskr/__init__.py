@@ -4,7 +4,6 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 import random, sys
 from models import setup_db, Question, Category
-from pprint import pprint
 
 QUESTIONS_PER_PAGE = 10
 
@@ -120,6 +119,16 @@ def create_app(test_config=None):
 
     try:
       questions = Question.query.order_by(Question.id).filter(Question.question.ilike('%{}%'.format(search_query))).all()
+
+      # If query returned nothing
+      if not questions:
+        return jsonify({
+          'success': True,
+          'questions': [],
+          'total_questions': len(questions),
+          'current_category': '',
+        })
+
       questions_formatted = paginate_questions(request, questions)
       current_category = Category.query.order_by(Category.id).get(questions[0].category)
 
@@ -141,9 +150,6 @@ def create_app(test_config=None):
       questions = Question.query.filter(Question.category == category_id).order_by(Question.category).all()
       questions_formatted = paginate_questions(request, questions)
       current_category = Category.query.order_by(Category.id).get(category_id)
-
-      if current_category is None:
-        abort(404)
 
       return jsonify({
         'success': True,
